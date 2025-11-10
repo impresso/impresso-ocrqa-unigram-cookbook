@@ -88,8 +88,8 @@ brew install make git git-lfs parallel coreutils python3 jq
 1. **Clone the repository:**
 
    ```bash
-   git clone --recursive https://github.com/impresso/impresso-ocr-qa-unigram.git
-   cd impresso-ocr-qa-unigram
+   git clone --recursive https://github.com/impresso/impresso-ocrqa-unigram-cookbook.git
+   cd impresso-ocrqa-unigram-cookbook
    ```
 
 2. **Install system-level dependencies:**
