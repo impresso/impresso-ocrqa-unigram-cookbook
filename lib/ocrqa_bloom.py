@@ -2,51 +2,83 @@
 """
 OCR Quality Assessment Inference Script with Bloom Filter
 
-This script performs OCR quality assessment using Bloom filters. It processes input text files, computes various OCR quality metrics, and outputs the results.
+This script performs OCR quality assessment using Bloom filters. It processes input text
+files, computes various OCR quality metrics, and outputs the results.
 
 Usage:
-    python ocrqa_bloom.py --input input.jsonl --bloomdicts bloom1.bloom bloom2.bloom --languages en fr --methods slc unk_ratio --output results.jsonl --lid langident.json
+    python ocrqa_bloom.py --input input.jsonl --bloomdicts bloom1.bloom \
+    bloom2.bloom --languages en fr --methods slc unk_ratio \
+    --output results.jsonl --lid langident.json
 
 Options:
     --log-file FILE           Write log to FILE
-    -q, --quiet               Do not print status messages to stderr (default: False)
-    -v, --verbose-output      Print verbose output information (default: False)
-    -C, --single_letter_cost  Cost for an infrequent single char (default: 0.7)
-    -S, --single_symbol_cost  Cost for an infrequent symbol char (default: 0.3)
-    -l, --languages           Language iso-2-letter codes (must match the number of bloom dictionaries)
+    -q, --quiet               Do not print status messages to stderr
+                              (default: False)
+    -v, --verbose-output      Print verbose output information
+                              (default: False)
+    -C, --single_letter_cost  Cost for an infrequent single char
+                              (default: 0.7)
+    -S, --single_symbol_cost  Cost for an infrequent symbol char
+                              (default: 0.3)
+    -l, --languages           Language iso-2-letter codes (must match the
+                              number of bloom dictionaries)
     --input                   Input JSONL files (default: stdin)
-    --bloomdicts              Paths to JSON files containing bloom dictionaries keys or Hugging Face Hub references
-    --unicode-normalization   Unicode normalization form to apply to input text (default: NFKC)
+    --bloomdicts              Paths to JSON files containing bloom
+                              dictionaries keys or Hugging Face Hub references
+    --unicode-normalization   Unicode normalization form to apply to input
+                              text (default: NFKC)
     --log-level               Logging level (default: INFO)
     --methods                 OCR QA methods to use (default: unk_type_ratio)
-    --keep-best               Keep only the highest OCR value for a given content item using the first method in --methods (default: False)
+    --keep-best               Keep only the highest OCR value for a given
+                              content item using the first method in --methods
+                              (default: False)
     --output                  Output file (default: stdout)
     --lid                     Path to language identification file
-    --s3-output-path          S3 path to upload the output file after processing or check if it already exists
+    --s3-output-path          S3 path to upload the output file after
+                              processing or check if it already exists
     --quit-if-s3-output-exists
-                              Quit if the output file already exists in the specified S3 bucket
-    --keep-timestamp-only     After uploading to S3, keep only the timestamp of the local output file for data efficiency
-    --s3-output-dry-run       Dry run which suppresses all write operations to s3 and checks whether output files on s3 exist
+                              Quit if the output file already exists in the
+                              specified S3 bucket
+    --keep-timestamp-only     After uploading to S3, keep only the timestamp
+                              of the local output file for data efficiency
+    --s3-output-dry-run       Dry run which suppresses all write operations
+                              to s3 and checks whether output files on s3 exist
 
 Example:
-    python ocrqa_bloom.py --input input.jsonl --bloomdicts bloom1.bloom bloom2.bloom --languages en fr --methods slc unk_ratio --output results.jsonl --lid langident.json
-    python ocrqa_bloom.py --input input.jsonl --bloomdicts hf://model_id/bloom1.bloom hf://model_id/bloom2.bloom --languages en fr --methods slc unk_ratio --output results.jsonl --lid langident.json
+    python ocrqa_bloom.py --input input.jsonl --bloomdicts bloom1.bloom \
+    bloom2.bloom --languages en fr --methods slc unk_ratio \
+    --output results.jsonl --lid langident.json
+    python ocrqa_bloom.py --input input.jsonl \
+    --bloomdicts hf://model_id/bloom1.bloom hf://model_id/bloom2.bloom \
+    --languages en fr --methods slc unk_ratio --output results.jsonl \
+    --lid langident.json
 
 Description:
-    This script reads input text files in JSONL format, where each line is a JSON object containing text to be assessed. It uses Bloom filters to compute various OCR quality metrics, such as single letter cost (slc), unknown ratio (unk_ratio), and unknown type ratio (unk_type_ratio). The results are output in JSONL format.
+    This script reads input text files in JSONL format, where each line is a
+    JSON object containing text to be assessed. It uses Bloom filters to
+    compute various OCR quality metrics, such as single letter cost (slc),
+    unknown ratio (unk_ratio), and unknown type ratio (unk_type_ratio). The
+    results are output in JSONL format.
 
-    The script supports multiple languages and Bloom filters. The number of languages must match the number of Bloom filters provided. The --keep-best option allows keeping only the highest OCR value for a given content item using the first method specified in --methods.
+    The script supports multiple languages and Bloom filters. The number of
+    languages must match the number of Bloom filters provided. The --keep-best
+    option allows keeping only the highest OCR value for a given content item
+    using the first method specified in --methods.
 
-    If a language identification file is provided using the --lid option, only the relevant bloomdicts will be applied based on the identified language of each content item.
+    If a language identification file is provided using the --lid option, only
+    the relevant bloomdicts will be applied based on the identified language
+    of each content item.
 
-    Bloom dictionaries can be specified as local file paths or as references to files in a Hugging Face Hub model directory using the "hf://" prefix.
+    Bloom dictionaries can be specified as local file paths or as references
+    to files in a Hugging Face Hub model directory using the "hf://" prefix.
 
-    Logging can be configured using the --log-file and --log-level options. Verbose output can be printed using the --verbose-output option.
+    Logging can be configured using the --log-file and --log-level options.
+    Verbose output can be printed using the --verbose-output option.
 
-    The script also supports uploading the output file to an S3 bucket, with options to quit if the file already exists, keep only the timestamp of the local file, and perform a dry run to check for existing files without making any changes.
-
-Contact:
-    For any questions or issues, please contact simon.clematide@uzh.ch
+    The script also supports uploading the output file to an S3 bucket, with
+    options to quit if the file already exists, keep only the timestamp of
+    the local file, and perform a dry run to check for existing files without
+    making any changes.
 """
 
 import logging
@@ -56,27 +88,44 @@ import json
 import sys
 from smart_open import open as smart_open
 from pybloomfilter import BloomFilter
-from typing import List, Any, Set, Dict, Counter, Optional, Sequence, Tuple
-from ocrqa_normalization import subtokens
+from typing import (
+    Any,
+    Counter,
+    DefaultDict,
+    Dict,
+    List,
+    Optional,
+    Sequence,
+    Set,
+    TextIO,
+    Tuple,
+)
+from impresso_pipelines.ocrqa.ocrqa_pipeline import subtokens
 import unicodedata
 from huggingface_hub import hf_hub_download
 import os
 from dotenv import load_dotenv
-
-
 import traceback
+
+from impresso_cookbook import (  # type: ignore
+    get_s3_client,
+    get_timestamp,
+    setup_logging,
+    get_transport_params,
+)
 from s3_to_local_stamps import (
     keep_timestamp_only,
-    get_s3_client,
     s3_file_exists,
     upload_file_to_s3,
-    get_timestamp,
 )
 
+log = logging.getLogger(__name__)
+
+# Needed to load environment variables for S3 credentials
 load_dotenv()
 
 
-def read_langident(path: str) -> Dict[str, str]:
+def read_langident(path: str) -> Dict[str, Optional[str]]:
     """
     Reads language identification results from a file.
 
@@ -84,22 +133,19 @@ def read_langident(path: str) -> Dict[str, str]:
         path (str): The path to the language identification file.
 
     Returns:
-        Dict[str, str]: A dictionary mapping document IDs to their identified languages.
+        Dict[str, Optional[str]]: A dictionary mapping document IDs to their identified
+        languages or None when the language is unknown.
     """
-    result = {}
-    if path.startswith("s3://"):
-        transport_params = {"client": get_s3_client()}
-    else:
-        transport_params = {}
+    result: Dict[str, Optional[str]] = {}
     with smart_open(
-        path, "r", encoding="utf-8", transport_params=transport_params
+        path, "r", encoding="utf-8", transport_params=get_transport_params(path)
     ) as f:
         for line in f:
             try:
                 contentitem = json.loads(line)
                 result[contentitem["id"]] = contentitem.get("lg")
             except KeyError:
-                logging.error("Problem %s", line)
+                log.error("Problem %s", line)
     return result
 
 
@@ -108,10 +154,12 @@ def split_hf_path(hf_path: str) -> Tuple[str, str]:
     Split a Hugging Face Hub path into its model ID and filename components.
 
     Args:
-        hf_path (str): The Hugging Face Hub path in the format "hf://organization/model_id/path/to/file".
+        hf_path (str): The Hugging Face Hub path in the format
+                       "hf://organization/model_id/path/to/file".
 
     Returns:
-        Tuple[str, str]: A tuple containing the model ID (organization/model_id) and filename path.
+        Tuple[str, str]: A tuple containing the model ID (organization/model_id)
+                         and filename path.
 
     Examples:
         >>> split_hf_path("hf://impresso-project/OCR-quality-assessment-unigram/path/to/file.bloom")
@@ -146,6 +194,10 @@ class OcrQABloomProcessor(object):
 
     def __init__(self, options: Any) -> None:
         self.options: Any = options
+
+        # Configure the module-specific logger
+        setup_logging(options.log_level, options.log_file, logger=log)
+
         if len(options.bloomdicts) != len(options.languages):
             raise ValueError(
                 "The number of bloom dictionaries must match the number of languages."
@@ -154,7 +206,7 @@ class OcrQABloomProcessor(object):
             self.load_bloom_filter(bloomdict) for bloomdict in options.bloomdicts
         ]
         self.languages: List[str] = options.languages
-        self.lang_ident_data: Dict[str, str] | None = (
+        self.lang_ident_data: Dict[str, Optional[str]] | None = (
             read_langident(self.options.lid) if self.options.lid else None
         )
         self.single_chars: Set[str] = set("àndl")
@@ -167,7 +219,7 @@ class OcrQABloomProcessor(object):
         self.verbose_output: bool = options.verbose_output
         self.single_letter_cost: float = options.single_letter_cost
         self.single_symbol_cost: float = options.single_symbol_cost
-        self.input: Optional[List[str]] = options.input
+        self.input: List[str] = options.input or ["-"]
         self.unicode_normalization: Optional[str] = options.unicode_normalization
         self.log_level: str = options.log_level
         self.methods: List[str] = options.methods
@@ -181,29 +233,25 @@ class OcrQABloomProcessor(object):
             if self.options.git_version
             else os.environ.get("GIT_VERSION", None)
         )
-        self.S3_CLIENT = (
-            get_s3_client()
-            if any(input_file.startswith("s3://") for input_file in self.input)
-            or str(self.options.lid).startswith("s3://")
-            else None
-        )
+
+        # Initialize S3 client using cookbook utility
+        self.s3_client = get_s3_client()
         self.lang_stats: Dict[str, int] = collections.defaultdict(int)
+
         if not options.s3_output_dry_run:
             # Check if the output file already exists in S3 and avoid lengthy processing
             if self.options.quit_if_s3_output_exists and (
                 s3out := self.options.s3_output_path
             ):
-                if s3_file_exists(self.S3_CLIENT, s3out):
-                    logging.warning(
+                if s3_file_exists(self.s3_client, s3out):
+                    log.warning(
                         "%s exists. Exiting without processing %s",
                         s3out,
                         self.input,
                     )
                     exit(3)
                 else:
-                    logging.info(
-                        "%s does not exist. Proceeding with processing.", s3out
-                    )
+                    log.info("%s does not exist. Proceeding with processing.", s3out)
 
     def load_bloom_filter(self, bloomdict: str) -> BloomFilter:
         """
@@ -214,21 +262,24 @@ class OcrQABloomProcessor(object):
         2. Hugging Face Hub model directories using the "hf://" prefix.
 
         Args:
-            bloomdict (str): The path to the Bloom filter file. This can be a local file path
-                             or a Hugging Face Hub reference in the format "hf://organization/repository/filename".
+            bloomdict (str): The path to the Bloom filter file. This can be a
+                             local file path or a Hugging Face Hub reference in
+                             the format
+                             "hf://organization/repository/filename".
 
         Returns:
             BloomFilter: The loaded Bloom filter object.
 
         Raises:
-            ValueError: If the bloomdict path is invalid or the file cannot be loaded.
+            ValueError: If the bloomdict path is invalid or the file cannot be
+                        loaded.
 
         """
         if bloomdict.startswith("hf://"):
             model_id, filename = split_hf_path(bloomdict)
-            logging.info(
-                "Downloading model from Hugging Face Hub (or cache): model_id: %s"
-                " filename: %s",
+            log.info(
+                "Downloading model from Hugging Face Hub (or cache): "
+                "model_id: %s filename: %s",
                 model_id,
                 filename,
             )
@@ -237,7 +288,7 @@ class OcrQABloomProcessor(object):
             local_path = hf_hub_download(
                 repo_id=model_id, filename=filename  # , use_auth_token=token
             )
-            logging.info("Loaded Bloom filter from %s", local_path)
+            log.info("Loaded Bloom filter from %s", local_path)
             return BloomFilter.open(local_path)
         else:
             return BloomFilter.open(bloomdict)
@@ -246,18 +297,21 @@ class OcrQABloomProcessor(object):
         self, subtoks_list: List[str], char_length: int
     ) -> float:
         """
-        Compute the ratio of number of subtokens to character length of original text.
+        Compute the ratio of number of subtokens to character length of
+        original text.
 
-        This metric helps identify content with poor OCR quality that results in excessive
-        fragmentation of text into short, meaningless tokens.
+        This metric helps identify content with poor OCR quality that results
+        in excessive fragmentation of text into short, meaningless tokens.
 
-        A high ratio indicates many short/meaningless tokens (numbers, single letters).
-        A low ratio indicates fewer, longer meaningful tokens.
+        A high ratio indicates many short/meaningless tokens (numbers, single
+        letters). A low ratio indicates fewer, longer meaningful tokens.
 
         Reading example:
         - A ratio of 0.173 means there are 17.3 subtokens per 100 characters
-        - For a 500-character text with ratio 0.173: ~87 subtokens (good quality)
-        - For a 500-character text with ratio 0.350: ~175 subtokens (poor quality)
+        - For a 500-character text with ratio 0.173: ~87 subtokens (good
+          quality)
+        - For a 500-character text with ratio 0.350: ~175 subtokens (poor
+          quality)
 
         Typical ranges:
         - 0.08-0.15: Good OCR quality (longer meaningful words)
@@ -269,7 +323,8 @@ class OcrQABloomProcessor(object):
             char_length (int): Character length of the original text
 
         Returns:
-            float: Ratio of subtoken count to character length (rounded to 3 decimal places)
+            float: Ratio of subtoken count to character length (rounded to 3
+                   decimal places)
         """
         if char_length == 0:
             return 0.0
@@ -277,16 +332,21 @@ class OcrQABloomProcessor(object):
         subtoken_count = len(subtoks_list)
         return round(subtoken_count / char_length, 3)
 
-    def get_subtokens(self, line: str, language: str = None) -> Dict[str, Any]:
+    def get_subtokens(
+        self, line: str, language: Optional[str] = None
+    ) -> Dict[str, Any]:
         """
-        Extract subtokens from the input line, with optional language-specific processing.
+        Extract subtokens from the input line, with optional language-specific
+        processing.
 
         Args:
             line (str): The input JSON line
-            language (str, optional): Language code for language-specific tokenization
+            language (str, optional): Language code for language-specific
+                                      tokenization
 
         Returns:
-            Dict[str, Any]: Dictionary containing document ID, subtokens, and char length
+            Dict[str, Any]: Dictionary containing document ID, subtokens, and
+                            char length
         """
         obj: Dict[str, Any] = json.loads(line)
         result: Dict[str, Any] = {
@@ -298,12 +358,13 @@ class OcrQABloomProcessor(object):
             ft: str = obj["ft"].lower()
             if self.options.unicode_normalization:
                 ft = unicodedata.normalize(self.options.unicode_normalization, ft)
-            result["subtokens"] = subtokens(
-                ft,
-                language=language,
-                unicode_normalize=None,
-                min_length=self.min_subtoken_length,
-            )
+            subtok_kwargs: Dict[str, Any] = {
+                "unicode_normalize": None,
+                "min_length": self.min_subtoken_length,
+            }
+            if language is not None:
+                subtok_kwargs["language"] = language
+            result["subtokens"] = subtokens(ft, **subtok_kwargs)
             result["char_length"] = len(ft)
         return result
 
@@ -311,21 +372,19 @@ class OcrQABloomProcessor(object):
         self, subtoks_list: List[str], bf: BloomFilter, i: int
     ) -> float:
         """Compute OCR QA score with single letter cost."""
-        counter: Counter[str] = collections.Counter()
-        counter["SL"] = -len(subtoks_list) / 20
+        counter: DefaultDict[str, float] = collections.defaultdict(float)
+        counter["SL"] = -len(subtoks_list) / 20.0
         for subtok in subtoks_list:
             if subtok in bf:
                 if len(subtok) > 1 or subtok in self.single_chars:
-                    counter["IV"] += 1
+                    counter["IV"] += 1.0
                 else:
                     counter["SL"] += float(self.options.single_letter_cost)
             else:
-                counter["OOV"] += 1
+                counter["OOV"] += 1.0
                 self.unks[self.options.bloomdicts[i]][subtok] += 1
         if counter["SL"] < 0:
-            counter["SL"] = 0
-        if "l" not in self.options.mode:
-            counter["SL"] = 0
+            counter["SL"] = 0.0
         totalsub: float = sum(counter.values())
         if totalsub == 0:
             return 0.0
@@ -344,8 +403,8 @@ class OcrQABloomProcessor(object):
     def compute_ocrqa_unk_type_ratio(
         self, subtoks_list: List[str], bf: BloomFilter
     ) -> float:
-        """Compute OCR QA score as the ratio of known unique subtoken types to all
-        unique subtoken types."""
+        """Compute OCR QA score as the ratio of known unique subtoken types to
+        all unique subtoken types."""
 
         unique_subtoks: Set[str] = set(subtoks_list)
         known_count: int = sum(1 for subtok in unique_subtoks if subtok in bf)
@@ -456,32 +515,38 @@ class OcrQABloomProcessor(object):
 
     def compute_results(
         self,
-        subtoks_info,
-        subtoks_list,
-        bf,
-        lang,
-        lang_index,
-        keep_best_method,
-        best_ocrqa_value,
-        best_result_index,
-        results,
+        subtoks_info: Dict[str, Any],
+        subtoks_list: List[str],
+        bf: BloomFilter,
+        lang: str,
+        lang_index: int,
+        keep_best_method: Optional[str],
+        best_ocrqa_value: float,
+        best_result_index: int,
+        results: List[Dict[str, Any]],
     ) -> Tuple[Dict[str, Any], float, int]:
         """
         Compute OCR QA results for a given language and Bloom filter.
 
         Args:
-            subtoks_info (Dict[str, Any]): Information about the subtokens.
-            subtoks_list (List[str]): List of subtokens.
+            subtoks_info (Dict[str, Any]): Information about the subtokens for
+                                           the current item.
+            subtoks_list (List[str]): List of normalized subtokens.
             bf (BloomFilter): Bloom filter for the given language.
             lang (str): Language code.
             lang_index (int): Index of the language in the languages list.
-            keep_best_method (Optional[str]): Method to keep the best result.
+            keep_best_method (Optional[str]): Method to keep the best result,
+                                              if any.
             best_ocrqa_value (float): Current best OCR QA value.
-            best_result_index (int): Index of the best result in the results list.
-            results (List[Dict[str, Any]]): List of results.
+            best_result_index (int): Index of the best result in the existing
+                                     results list.
+            results (List[Dict[str, Any]]): Accumulated results used to compute
+                                            indices for comparison.
 
         Returns:
-            Tuple[Dict[str, Any], float, int]: The result dictionary, updated best OCR QA value, and updated best result index.
+            Tuple[Dict[str, Any], float, int]: The result dictionary, updated
+                                               best OCR QA value, and updated
+                                               best result index.
         """
         result: Dict[str, Any] = {
             "ci_id": subtoks_info["id"],
@@ -548,18 +613,23 @@ class OcrQABloomProcessor(object):
 
     def run(self) -> None:
         """Run the OCR QA process."""
-        input_files: List[str] = self.options.input if self.options.input else ["-"]
-        output_file = (
-            smart_open(self.options.output, "w") if self.options.output else sys.stdout
+        input_files: List[str] = self.input
+        output_file: TextIO = (
+            smart_open(
+                self.options.output,
+                "w",
+                transport_params=get_transport_params(self.options.output),
+            )
+            if self.options.output
+            else sys.stdout
         )
         for input_file in input_files:
-            if input_file.startswith("s3://"):
-                transport_params = {"client": get_s3_client()}
-            else:
-                transport_params = {}
-            logging.debug("Processing %s", input_file)
+            log.debug("Processing %s", input_file)
             with smart_open(
-                input_file, "r", encoding="utf-8", transport_params=transport_params
+                input_file,
+                "r",
+                encoding="utf-8",
+                transport_params=get_transport_params(input_file),
             ) as f:
                 for line in f:
                     results: List[Dict[str, Any]] = self.process_line(line)
@@ -569,14 +639,14 @@ class OcrQABloomProcessor(object):
                                 json.dumps(result, ensure_ascii=False), file=output_file
                             )
         if len(self.ocrqa_stats) > 0:
-            logging.info(
+            log.info(
                 "STATS-MEANOCRAQ\t%f", sum(self.ocrqa_stats) / len(self.ocrqa_stats)
             )
         else:
-            logging.info("No OCRQA computed")
+            log.info("No OCRQA computed")
 
         for lang, count in self.lang_stats.items():
-            logging.info(
+            log.info(
                 "STATS-OCRAQED-LANGUAGE %s: %d content items OCR QA-ed", lang, count
             )
         if self.options.output:
@@ -585,15 +655,15 @@ class OcrQABloomProcessor(object):
         # Upload the output file to S3 if specified
         if not self.options.s3_output_dry_run and self.options.s3_output_path:
             upload_file_to_s3(
-                self.S3_CLIENT, self.options.output, self.options.s3_output_path
+                self.s3_client, self.options.output, self.options.s3_output_path
             )
 
             if self.options.keep_timestamp_only:
                 keep_timestamp_only(self.options.output)
-        logging.info("Finished processing %s", input_files)
+        log.info("Finished processing %s", input_files)
 
 
-def parse_arguments(args: Optional[List[str]] = None) -> argparse.Namespace:
+def parse_arguments(args: Optional[Sequence[str]] = None) -> argparse.Namespace:
     """Parse command-line arguments.
 
     Args:
@@ -650,8 +720,8 @@ def parse_arguments(args: Optional[List[str]] = None) -> argparse.Namespace:
         nargs="+",
         default=None,
         help=(
-            "Language iso-2-letter codes (must match the number of bloom dictionaries)"
-            " (default: %(default)s)"
+            "Language iso-2-letter codes (must match the number of bloom "
+            "dictionaries) (default: %(default)s)"
         ),
     )
     parser.add_argument(
@@ -669,8 +739,8 @@ def parse_arguments(args: Optional[List[str]] = None) -> argparse.Namespace:
         nargs="+",
         default=None,
         help=(
-            "Paths to JSON files containing bloom dictionaries keys (default:"
-            " %(default)s)"
+            "Paths to JSON files containing bloom dictionaries keys "
+            "(default: %(default)s)"
         ),
     )
     parser.add_argument("--lid", help="Path to language identification file")
@@ -702,8 +772,8 @@ def parse_arguments(args: Optional[List[str]] = None) -> argparse.Namespace:
         dest="keep_best",
         default=False,
         help=(
-            "keep only the highest OCR value for a given content item using the"
-            " first method in --methods (default: %(default)s)"
+            "keep only the highest OCR value for a given content item using "
+            "the first method in --methods (default: %(default)s)"
         ),
     )
     parser.add_argument(
@@ -716,8 +786,8 @@ def parse_arguments(args: Optional[List[str]] = None) -> argparse.Namespace:
     parser.add_argument(
         "--s3-output-path",
         help=(
-            "S3 path to upload the output file after processing or check if it already"
-            " exists"
+            "S3 path to upload the output file after processing or check if "
+            "it already exists"
         ),
     )
     parser.add_argument(
@@ -729,17 +799,17 @@ def parse_arguments(args: Optional[List[str]] = None) -> argparse.Namespace:
         "--keep-timestamp-only",
         action="store_true",
         help=(
-            "After uploading to S3, keep only the timestamp of the local output file"
-            " for data efficiency. Defaults: %(default)s"
+            "After uploading to S3, keep only the timestamp of the local "
+            "output file for data efficiency. Defaults: %(default)s"
         ),
     )
     parser.add_argument(
         "--s3-output-dry-run",
         action="store_true",
         help=(
-            "Dry run which suppresses all write operations to s3 and checks whether"
-            " output files on s3 exist. Implies also unsetting --keep-timestamp-only"
-            " and --quit-if-s3-output-exists flag."
+            "Dry run which suppresses all write operations to s3 and checks "
+            "whether output files on s3 exist. Implies also unsetting "
+            "--keep-timestamp-only and --quit-if-s3-output-exists flag."
         ),
     )
     parser.add_argument(
@@ -747,9 +817,9 @@ def parse_arguments(args: Optional[List[str]] = None) -> argparse.Namespace:
         type=int,
         default=10,
         help=(
-            "Minimum number of subtokens required to create a value. A subtoken is a"
-            " token that remains after applying some ocrqa-specific masking and"
-            " splitting. (default: %(default)s)"
+            "Minimum number of subtokens required to create a value. A "
+            "subtoken is a token that remains after applying some "
+            "ocrqa-specific masking and splitting. (default: %(default)s)"
         ),
     )
     parser.add_argument(
@@ -761,37 +831,14 @@ def parse_arguments(args: Optional[List[str]] = None) -> argparse.Namespace:
     parser.add_argument(
         "--git-version",
         help=(
-            "Set the git version to include in the output. If not set, the GIT_VERSION"
-            " environment variable is used."
-            "Normally the output of `git describe --tags --always` is used."
+            "Set the git version to include in the output. If not set, the "
+            "GIT_VERSION environment variable is used. Normally the output "
+            "of `git describe --tags --always` is used."
         ),
     )
 
-    return parser.parse_args(args)
-
-
-def setup_logging(log_level: str, log_file: Optional[str]) -> None:
-    """Configure logging.
-
-    Args:
-        log_level: Logging level as a string
-        log_file: Path to the log file
-    """
-
-    class SmartFileHandler(logging.FileHandler):
-        def _open(self):
-            return smart_open(self.baseFilename, self.mode, encoding="utf-8")
-
-    handlers: List[logging.Handler] = [logging.StreamHandler()]
-    if log_file:
-        handlers.append(SmartFileHandler(log_file, mode="w"))
-
-    logging.basicConfig(
-        level=log_level,
-        format="%(asctime)-15s %(filename)s:%(lineno)d %(levelname)s: %(message)s",
-        handlers=handlers,
-        force=True,
-    )
+    parsed_args = parser.parse_args(list(args) if args is not None else None)
+    return parsed_args
 
 
 def main(args: Optional[Sequence[str]] = None) -> None:
@@ -802,20 +849,22 @@ def main(args: Optional[Sequence[str]] = None) -> None:
     """
     options: argparse.Namespace = parse_arguments(args)
 
-    setup_logging(options.log_level, options.log_file)
-    logging.info("Calling OCR QA Bloom Processor with options: %s", options)
+    log.info("Calling OCR QA Bloom Processor with options: %s", options)
     if not options.bloomdicts:
-        logging.error("WARNING: No bloom dictionaries provided; cannot perform OCR QA")
+        log.error("WARNING: No bloom dictionaries provided; cannot perform OCR QA")
         sys.exit(1)
     try:
         processor: OcrQABloomProcessor = OcrQABloomProcessor(options)
         processor.run()
     except Exception as e:
-        logging.error(f"An error occurred: {e}")
-        logging.error(traceback.format_exc())
+        log.error(f"An error occurred: {e}")
+        log.error(traceback.format_exc())
         sys.exit(1)
 
 
 if __name__ == "__main__":
-    main()
-    sys.exit(0)
+    try:
+        main()
+    except Exception as e:
+        log.error(f"Processing error: {e}", exc_info=True)
+        sys.exit(2)

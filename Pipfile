@@ -13,6 +13,7 @@ huggingface_hub = "*"
 boto3 = "==1.35.95"
 jq = "*"
 impresso-cookbook = {editable = true, path = "./cookbook/lib"}
+impresso-pipelines = "~=0.5"
 [dev-packages]
 ipykernel = "*"
 jupyter = "*"
