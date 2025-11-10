@@ -1506,6 +1506,14 @@
             "markers": "python_version >= '3.9'",
             "version": "==1.26.4"
         },
+        "overrides": {
+            "hashes": [
+                "sha256:55158fa3d93b98cc75299b1e67078ad9003ca27945c76162c1c0766d6f91820a",
+                "sha256:c7ed9d062f78b8e4c1a7b70bd8796b35ead4d9f510227ef9c5dc7626c60d7e49"
+            ],
+            "markers": "python_version >= '3.6'",
+            "version": "==7.7.0"
+        },
         "packaging": {
             "hashes": [
                 "sha256:29572ef2b1f17581046b3a2227d5c611fb25ec70ca1ba8554b24b0e69331a484",
