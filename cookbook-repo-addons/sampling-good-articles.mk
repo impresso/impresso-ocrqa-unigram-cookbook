@@ -6,7 +6,8 @@ sample-files: $(BUILD_DIR)/sampling/ocrqa-highscores-de.jsonl \
 			  $(BUILD_DIR)/sampling/ocrqa-highscores-fr.jsonl 
 #			  $(BUILD_DIR)/sampling/ocrqa-highscores-lb.jsonl
 
-sampled-files: $(BUILD_DIR)/sampling/ocrqa-highscores-data-de.jsonl.bz2
+sampled-files: $(BUILD_DIR)/sampling/ocrqa-highscores-data-de.jsonl.bz2 \
+$(BUILD_DIR)/sampling/ocrqa-highscores-data-fr.jsonl.bz2
 
 $(BUILD_DIR)/sampling/ocrqa-highscores-%.jsonl:
 	@mkdir -p $(dir $@)
@@ -19,7 +20,7 @@ $(BUILD_DIR)/sampling/ocrqa-highscores-%.jsonl:
 		--max-samples-per-group 20 \
 		--record-id-field ci_id \
 		--random-seed 42 \
-		--log-level INFO \
+		--log-level $(LOGGING_LEVEL) \
 		--log-file $@.log.gz
 		
 
@@ -32,4 +33,5 @@ $(BUILD_DIR)/sampling/ocrqa-highscores-data-%.jsonl.bz2: $(BUILD_DIR)/sampling/o
 		--include-from-input ci_id ocrqa lg subtokens subtoken_char_ratio \
 		--transform-expr '{text: .ft}' \
 		--s3-prefix s3://22-rebuilt-final/ \
-		--log-level DEBUG
+		--log-level $(LOGGING_LEVEL) \
+		--log-file $@.log.gz

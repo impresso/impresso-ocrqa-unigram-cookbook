@@ -76,6 +76,7 @@ include cookbook/newspaper_list.mk
 
 
 # SETUP PATHS
+include cookbook/paths_canonical.mk
 include cookbook/paths_rebuilt.mk
 include cookbook/paths_langident.mk
 include cookbook/paths_ocrqa.mk
@@ -87,6 +88,7 @@ include cookbook/main_targets.mk
 
 # SYNCHRONIZATION TARGETS
 include cookbook/sync.mk
+include cookbook/sync_canonical.mk
 include cookbook/sync_rebuilt.mk
 include cookbook/sync_langident.mk
 include cookbook/sync_ocrqa.mk
